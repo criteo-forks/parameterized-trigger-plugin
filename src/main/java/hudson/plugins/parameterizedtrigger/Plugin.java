@@ -1,12 +1,14 @@
 package hudson.plugins.parameterizedtrigger;
 
 import hudson.Extension;
+import hudson.init.InitMilestone;
+import hudson.init.Initializer;
 import hudson.model.Item;
-import hudson.model.Hudson;
-import hudson.model.Item;
+import hudson.model.Queue;
 import hudson.model.ItemGroup;
 import hudson.model.Project;
 import hudson.model.listeners.ItemListener;
+import hudson.model.queue.QueueSorter;
 import hudson.util.EnumConverter;
 
 import java.io.IOException;
@@ -24,11 +26,22 @@ import static org.apache.commons.lang.StringUtils.isEmpty;
 
 public class Plugin extends hudson.Plugin {
 
+    private static final Logger LOGGER = Logger.getLogger(Plugin.class.getName());
+
 	@Override
 	public void start() throws Exception {
 		Stapler.CONVERT_UTILS.register(new EnumConverter(),
 				ResultCondition.class);
 	}
+
+    @Initializer(after = InitMilestone.JOB_LOADED)
+    public static void initQueueSorter() {
+        LOGGER.info("Wrapping the queue sorter.");
+        Queue queue = Jenkins.getInstance().getQueue();
+        QueueSorter sorter = queue.getSorter();
+        queue.setSorter(new PrioritizedQueueSorter(sorter));
+        LOGGER.info("Wrapped the queue sorter.");
+    }
 
         /**
          * If a job is renamed, update all parameterized-triggers with the new name.
